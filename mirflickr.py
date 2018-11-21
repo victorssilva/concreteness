@@ -1,9 +1,12 @@
 import json
+import logging
 import os
 
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
+
+log = logging.getLogger(__name__)
 
 
 def get_tags(tags_file):
@@ -113,7 +116,7 @@ class MirflickrImagesDataset(Dataset):
       try:
         image = self.transform(image)
       except Exception as e:
-        print("Could not transform image {} due to {}.".format(index, e))
+        log.warning("Could not transform image %s due to %s. Skipping.", index, e)
         return torch.zeros(3, 224, 224)
 
     return image

@@ -1,4 +1,5 @@
 import argparse
+import logging
 import math
 import os.path
 
@@ -14,6 +15,8 @@ from torch.autograd import Variable
 from torch.utils.data import Dataset, DataLoader
 
 cuda = torch.cuda.is_available()
+
+log = logging.getLogger(__name__)
 
 
 def show_image(dataset, image_index):
@@ -91,7 +94,7 @@ def build_image_vectors(dataset, batch_size=64, num_workers=4):
       continue
 
     img_vectors[batch_start:batch_end] = img2vec(resnet, batch)
-    print("computed batch {} out of {}".format(batch_index, number_of_batches))
+    log.debug("Computed batch %s out of %s", batch_index, number_of_batches)
 
   return img_vectors
 
@@ -182,7 +185,7 @@ def get_concreteness_precomputed_nns(dataset, nns, k):
     concreteness[word] = get_concreteness_for_word_precomputed_nns(
       word, associated_images, filtered_image_to_index, nns, n, k)
     if not i % 1000:
-      print("Done with word {} out of {}".format(i, len(images_by_tag)))
+      log.debug("Done with word %s out of %s", i, len(images_by_tag))
     i += 1
   return concreteness
 
@@ -190,22 +193,29 @@ def get_concreteness_precomputed_nns(dataset, nns, k):
 def build_nns(img_vectors, k, annoy_index_file=None):
   if annoy_index_file is not None and os.path.isfile(annoy_index_file):
     annoy_index = load_annoy_index(annoy_index_file)
-    print("Loaded annoy index.")
+    log.info("Loaded annoy index.")
   else:
-    print("Building annoy index.")
+    log.info("Building annoy index.")
     annoy_index = build_annoy_index(img_vectors)
 
     if annoy_index_file is not None:
       annoy_index.save(annoy_index_file)
-      print("Annoy index was saved to {}.".format(annoy_index_file))
+      log.info("Annoy index was saved to %s.", annoy_index_file)
 
+  log.info("Bulding NNS map.")
   nns = {}
   for index in range(len(img_vectors)):
     nns[index] = set(annoy_index.get_nns_by_item(index, k))
     if not index % 1000:
-      print("Done saving NNS for {} out of {}".format(index, len(img_vectors)))
+      log.debug("Done saving NNS for %s out of %s", index, len(img_vectors))
 
   return nns
+
+
+def _setup_logging(verbose):
+  logging_level = logging.DEBUG if verbose else logging.INFO
+  logging_format='%(asctime)s [%(levelname)s] %(message)s'
+  logging.basicConfig(level=logging_level, format=logging_format)
 
 
 def main():
@@ -214,7 +224,11 @@ def main():
                       help="Path to the directory of the mirflickr dataset.")
   parser.add_argument("-c", "--cache-dir", type=str, required=False,
                       help="Path to a directory to use for cache.")
+  parser.add_argument("-v", "--verbose", help="Increase output verbosity.",
+                      action="store_true")
   args = parser.parse_args()
+
+  _setup_logging(args.verbose)
 
   images_directory = os.path.join(args.dataset_dir, "images")
   tags_directory = os.path.join(args.dataset_dir, "tags")
@@ -225,27 +239,27 @@ def main():
     vectors_file = os.path.join(args.cache_dir, "vectors.pt")
     annoy_index_file = os.path.join(args.cache_dir, "index.ann")
 
-  print("Loading dataset.")
+  log.info("Loading dataset.")
   dataset = mirflickr.MirflickrImagesDataset(images_directory, tags_directory,
                                              transform=get_tensor_for_image)
-  print("Dataset is loaded.")
+  log.info("Dataset is loaded.")
 
   if vectors_file is not None and os.path.isfile(vectors_file):
     img_vectors = torch.load(vectors_file)
   else:
-    print("Building image vectors.")
+    log.info("Building image vectors.")
     img_vectors = build_image_vectors(dataset)
-    print("Built image vectors.")
+    log.info("Built image vectors.")
 
     if vectors_file is not None:
       torch.save(img_vectors, vectors_file)
-      print("Saved image vectors to {}".format(vectors_file))
+      log.info("Saved image vectors to %s", vectors_file)
 
-  print("Computing concreteness.")
+  log.info("Computing concreteness.")
   k = 50
   nns = build_nns(img_vectors, k, annoy_index_file=annoy_index_file)
   concreteness = get_concreteness_precomputed_nns(dataset, nns, k)
-  print("Done!")
+  log.info("Done!")
 
   sorted_concreteness = sorted(concreteness.items(), key=lambda x: x[1], reverse=True)
   len(sorted_concreteness)
