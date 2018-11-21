@@ -1,3 +1,4 @@
+import argparse
 import math
 import os.path
 
@@ -194,7 +195,7 @@ def build_nns(img_vectors, k, annoy_index_file=None):
     print("Building annoy index.")
     annoy_index = build_annoy_index(img_vectors)
 
-    if annoy_index_file:
+    if annoy_index_file is not None:
       annoy_index.save(annoy_index_file)
       print("Annoy index was saved to {}.".format(annoy_index_file))
 
@@ -208,23 +209,37 @@ def build_nns(img_vectors, k, annoy_index_file=None):
 
 
 def main():
-  vectors_file = "/home/victor/data/mirflickr/vectors.pt"
-  annoy_index_file = "/home/victor/data/mirflickr/index.ann"
-  images_directory = "/home/victor/data/mirflickr/images"
-  tags_directory = "/home/victor/data/mirflickr/tags"
+  parser = argparse.ArgumentParser()
+  parser.add_argument("-d", "--dataset-dir", type=str, required=True,
+                      help="Path to the directory of the mirflickr dataset.")
+  parser.add_argument("-c", "--cache-dir", type=str, required=False,
+                      help="Path to a directory to use for cache.")
+  args = parser.parse_args()
+
+  images_directory = os.path.join(args.dataset_dir, "images")
+  tags_directory = os.path.join(args.dataset_dir, "tags")
+
+  vectors_file = None
+  annoy_index_file = None
+  if args.cache_dir is not None:
+    vectors_file = os.path.join(args.cache_dir, "vectors.pt")
+    annoy_index_file = os.path.join(args.cache_dir, "index.ann")
 
   print("Loading dataset.")
   dataset = mirflickr.MirflickrImagesDataset(images_directory, tags_directory,
                                              transform=get_tensor_for_image)
   print("Dataset is loaded.")
 
-  if os.path.isfile(vectors_file):
+  if vectors_file is not None and os.path.isfile(vectors_file):
     img_vectors = torch.load(vectors_file)
   else:
     print("Building image vectors.")
     img_vectors = build_image_vectors(dataset)
-    torch.save(img_vectors, vectors_file)
-    print("Image vectors were built and saved.")
+    print("Built image vectors.")
+
+    if vectors_file is not None:
+      torch.save(img_vectors, vectors_file)
+      print("Saved image vectors to {}".format(vectors_file))
 
   print("Computing concreteness.")
   k = 50
