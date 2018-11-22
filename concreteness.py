@@ -2,26 +2,25 @@ import logging
 import math
 import os.path
 
-import numpy as np
 import torch
 import torchvision.models as models
 import torch.multiprocessing as mp
 import torchvision.transforms as transforms
 from annoy import AnnoyIndex
-from PIL import Image
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-
-import mirflickr
 
 cuda = torch.cuda.is_available()
 
 log = logging.getLogger(__name__)
 
 
-def show_image(dataset, image_index):
-    image = dataset.get_pil_image(image_index)
-    imshow(np.asarray(image))
+# TODO: move this to the jupyter notebook
+# import numpy as np
+# from matplotlib.pyplot import imshow
+# def show_image(dataset, image_index):
+#     image = dataset.get_pil_image(image_index)
+#     imshow(np.asarray(image))
 
 
 # These are the expected values of the following pre-trained model.
