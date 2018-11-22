@@ -1,0 +1,5 @@
+[FORMAT]
+max-line-length=100
+
+[TYPECHECK]
+ignored-modules = torch
