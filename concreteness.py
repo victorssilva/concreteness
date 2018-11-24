@@ -4,7 +4,6 @@ import os.path
 
 import torch
 import torchvision.models as models
-import torch.multiprocessing as mp
 import torchvision.transforms as transforms
 from annoy import AnnoyIndex
 from torch.autograd import Variable
@@ -13,14 +12,6 @@ from torch.utils.data import DataLoader
 cuda = torch.cuda.is_available()
 
 log = logging.getLogger(__name__)
-
-
-# TODO: move this to the jupyter notebook
-# import numpy as np
-# from matplotlib.pyplot import imshow
-# def show_image(dataset, image_index):
-#     image = dataset.get_pil_image(image_index)
-#     imshow(np.asarray(image))
 
 
 # These are the expected values of the following pre-trained model.
@@ -122,42 +113,7 @@ def load_annoy_index(file):
     return annoy_index
 
 
-def get_concreteness_for_word(word, associated_images, filtered_image_to_index, annoy_index_file,
-                              n, k):
-    annoy_index = load_annoy_index(annoy_index_file)
-    mni = 0.0
-
-    for image in associated_images:
-        if image not in filtered_image_to_index:
-            continue
-
-        neighbors = set(annoy_index.get_nns_by_item(filtered_image_to_index[image], k))
-        mni += 1.0 * (len(associated_images.intersection(neighbors)))
-
-    mni = mni / len(associated_images)
-    denominator = (1.0 * k * len(associated_images)) / n
-    return mni / denominator
-
-
-def get_concreteness(dataset, annoy_index_file, k):
-    images_by_tag = get_images_by_tag(dataset.filtered_tags)
-    filtered_image_to_index = dataset.get_filtered_image_to_index()
-    n = len(dataset.filtered_tags)
-
-    with mp.Pool() as pool:
-        results = {}
-        for word in images_by_tag:
-            associated_images = images_by_tag[word]
-            results[word] = pool.apply_async(get_concreteness_for_word,
-                                             (word, associated_images, filtered_image_to_index,
-                                              annoy_index_file, n, k))
-
-    concreteness = {word: result.get() for (word, result) in results.items()}
-    return concreteness
-
-
-def get_concreteness_for_word_precomputed_nns(word, associated_images, filtered_image_to_index,
-                                              nns, n, k):
+def get_concreteness_for_word(word, associated_images, filtered_image_to_index, nns, n, k):
     mni = 0.0
 
     for image in associated_images:
@@ -172,7 +128,7 @@ def get_concreteness_for_word_precomputed_nns(word, associated_images, filtered_
     return mni / denominator
 
 
-def get_concreteness_precomputed_nns(dataset, nns, k):
+def get_concreteness(dataset, nns, k):
     images_by_tag = get_images_by_tag(dataset.filtered_tags)
     filtered_image_to_index = dataset.get_filtered_image_to_index()
     n = len(dataset.filtered_tags)
@@ -181,7 +137,7 @@ def get_concreteness_precomputed_nns(dataset, nns, k):
     i = 0
     for word in images_by_tag:
         associated_images = images_by_tag[word]
-        concreteness[word] = get_concreteness_for_word_precomputed_nns(
+        concreteness[word] = get_concreteness_for_word(
             word, associated_images, filtered_image_to_index, nns, n, k)
         if not i % 1000:
             log.debug("Done with word %s out of %s", i, len(images_by_tag))

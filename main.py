@@ -59,7 +59,7 @@ def main():
 
     log.info("Computing concreteness.")
     nns = concreteness.build_nns(img_vectors, args.k, annoy_index_file=annoy_index_file)
-    concreteness_dict = concreteness.get_concreteness_precomputed_nns(dataset, nns, args.k)
+    concreteness_dict = concreteness.get_concreteness(dataset, nns, args.k)
     log.info("Done!")
 
     sorted_concreteness = sorted(concreteness_dict.items(), key=lambda x: x[1], reverse=True)
