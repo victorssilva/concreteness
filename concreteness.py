@@ -89,15 +89,6 @@ def build_image_vectors(dataset, batch_size=64, num_workers=4):
     return img_vectors
 
 
-def get_images_by_tag(filtered_tags):
-    images_by_tag = {}
-    for image, tags in filtered_tags.items():
-        for tag in tags:
-            images_by_tag.setdefault(tag, set()).add(image)
-
-    return images_by_tag
-
-
 def build_annoy_index(img_vectors):
     annoy_index = AnnoyIndex(2048)
     for i in range(len(img_vectors)):
@@ -113,14 +104,11 @@ def load_annoy_index(file):
     return annoy_index
 
 
-def get_concreteness_for_word(word, associated_images, filtered_image_to_index, nns, n, k):
+def get_concreteness_for_word(word, associated_images, nns, n, k):
     mni = 0.0
 
     for image in associated_images:
-        if image not in filtered_image_to_index:
-            continue
-
-        neighbors = nns[filtered_image_to_index[image]]
+        neighbors = nns[image]
         mni += 1.0 * (len(associated_images.intersection(neighbors)))
 
     mni = mni / len(associated_images)
@@ -129,16 +117,14 @@ def get_concreteness_for_word(word, associated_images, filtered_image_to_index, 
 
 
 def get_concreteness(dataset, nns, k):
-    images_by_tag = get_images_by_tag(dataset.filtered_tags)
-    filtered_image_to_index = dataset.get_filtered_image_to_index()
+    images_by_tag = dataset.images_by_tag
     n = len(dataset.filtered_tags)
 
     concreteness = {}
     i = 0
     for word in images_by_tag:
         associated_images = images_by_tag[word]
-        concreteness[word] = get_concreteness_for_word(
-            word, associated_images, filtered_image_to_index, nns, n, k)
+        concreteness[word] = get_concreteness_for_word(word, associated_images, nns, n, k)
         if not i % 1000:
             log.debug("Done with word %s out of %s", i, len(images_by_tag))
         i += 1

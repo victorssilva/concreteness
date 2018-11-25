@@ -81,6 +81,15 @@ def get_filtered_images(filtered_tags, image_indexes, min_score=3):
     return [img for img in image_indexes if get_image_score(filtered_tags, img) >= min_score]
 
 
+def get_images_by_tag(tags):
+    images_by_tag = {}
+    for image, tags in tags.items():
+        for tag in tags:
+            images_by_tag.setdefault(tag, set()).add(image)
+
+    return images_by_tag
+
+
 class MirflickrImagesDataset(Dataset):
     dataset_size = 1000000
     subdirectory_size = 10000
@@ -97,8 +106,13 @@ class MirflickrImagesDataset(Dataset):
         except FileNotFoundError:
             image_tags = build_tags_json(list_tag_files(tags_directory), tags_json_filename)
 
-        self.filtered_tags = get_filtered_tags(image_tags)
-        self.filtered_images = get_filtered_images(self.filtered_tags, image_indexes)
+        filtered_tags = get_filtered_tags(image_tags)
+        self.filtered_images = get_filtered_images(filtered_tags, image_indexes)
+
+        # Because we've filtered out some of our images, we'll now map the previous image indices
+        # to the new ones to avoid dealing with gaps.
+        self.filtered_tags = self._build_filtered_tags_with_converted_image_indexes(filtered_tags)
+        self.images_by_tag = get_images_by_tag(self.filtered_tags)
 
     def __len__(self):
         return len(self.filtered_images)
@@ -121,8 +135,19 @@ class MirflickrImagesDataset(Dataset):
 
         return image
 
-    def get_filtered_image_to_index(self):
+    def _build_filtered_image_to_index_map(self):
         filtered_image_to_index = {}
         for i, image_index in enumerate(self.filtered_images):
             filtered_image_to_index[image_index] = i
         return filtered_image_to_index
+
+    def _build_filtered_tags_with_converted_image_indexes(self, filtered_tags):
+        filtered_image_to_index = self._build_filtered_image_to_index_map()
+        filtered_tags_with_converted_image_indexes = {}
+        for image, tags in filtered_tags.items():
+            if image not in filtered_image_to_index:
+                continue
+            new_image_index = filtered_image_to_index[image]
+            filtered_tags_with_converted_image_indexes[new_image_index] = tags
+
+        return filtered_tags_with_converted_image_indexes
