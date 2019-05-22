@@ -12,7 +12,11 @@ If you'd like use a Jupyter Notebook for interacting with the concreteness score
 
 `pip install -r requirements-notebook.txt`
 
-As of now, the existing code has only been tested with Python3.6.
+As of now, the existing code has only been tested with Python3.6 and Python 3.7.
+
+For the MSCOCO dataset, you'd also have to download the English model for SpaCy by 
+
+`python -m spacy download en`
 
 ## Usage
 
