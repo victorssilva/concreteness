@@ -5,7 +5,6 @@ import os.path
 import torch
 
 import concreteness
-import mirflickr
 
 log = logging.getLogger(__name__)
 
@@ -21,19 +20,18 @@ def _setup_logging(verbose):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset-dir", type=str, required=True,
-                        help="Path to the directory of the mirflickr dataset.")
+                        help="Path to the directory of the dataset.")
     parser.add_argument("-c", "--cache-dir", type=str, required=False,
                         help="Path to a directory to use for cache.")
     parser.add_argument("-v", "--verbose", help="Increase output verbosity.",
                         action="store_true")
     parser.add_argument("-k", help="Number of neighbos to search for.", type=int,
                         default=DEFAULT_K, required=False)
+    parser.add_argument("-t", help="Type of dataset: mirflickr | mscoco", type=str, 
+                        default="mirflickr")
     args = parser.parse_args()
 
     _setup_logging(args.verbose)
-
-    images_directory = os.path.join(args.dataset_dir, "images")
-    tags_directory = os.path.join(args.dataset_dir, "tags")
 
     vectors_file = None
     annoy_index_file = None
@@ -41,9 +39,21 @@ def main():
         vectors_file = os.path.join(args.cache_dir, "vectors.pt")
         annoy_index_file = os.path.join(args.cache_dir, "index.ann")
 
+    if args.t == "mirflickr":
+        from mirflickr import MirflickrImagesDataset as Dataset
+        images_directory = os.path.join(args.dataset_dir, "images")
+        tags_directory = os.path.join(args.dataset_dir, "tags")
+    elif args.t == "mscoco":
+        from mscoco import MSCOCODataset as Dataset
+        images_directory = os.path.join(args.dataset_dir, "train2014/")
+        tags_directory = os.path.join(args.dataset_dir, "annotations/captions_train2014.json")
+    else:
+        raise Exception("Data type {:s} not supported.".format(args.t))
+
     log.info("Loading dataset.")
-    dataset = mirflickr.MirflickrImagesDataset(images_directory, tags_directory,
-                                               transform=concreteness.get_tensor_for_image)
+    dataset = Dataset(
+        images_directory, tags_directory, transform=concreteness.get_tensor_for_image
+    )
     log.info("Dataset is loaded.")
 
     if vectors_file is not None and os.path.isfile(vectors_file):
@@ -66,7 +76,7 @@ def main():
     len(sorted_concreteness)
 
     from IPython import embed
-    embed()
+    embed(using=False)
 
 
 if __name__ == "__main__":
