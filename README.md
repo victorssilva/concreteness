@@ -26,12 +26,23 @@ cd data
 
 It's 120GB, so it may take a while.
 
+Similarly, you can get the MSCOCO dataset with:
+
+```
+cd data
+./get_mscoco.sh
+```
+
 ### Shell usage
 Once your download is finished, you can compute the concreteness scores with:
 
 `python main.py -d <mirflickr_directory> -c <cache_directory> -v`
 
 Swap in the path to where the mirflickr dataset was downloaded to and a directory of your choice to use for caching.
+
+For the MSCOCO dataset, run with 
+
+`python main.py -d <mscoco_directory> -c <cache_directory> -v -t mscoco`
 
 ### Jupyter Notebook
 
@@ -40,7 +51,6 @@ If you prefer, you can also run the provided Jupyter Notebook:
 `jupyter notebook concreteness.ipynb`
 
 ## TODO
-- Add support for MSCOCO dataset
 - Improve Jupyter Notebook formatting
 
 ## Thanks to
