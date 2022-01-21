@@ -4,5 +4,5 @@ Pillow==5.3.0
 six==1.11.0
 torch==0.4.1
 torchvision==0.2.1
-ipython==7.1.1
+ipython==7.16.3
 spacy==2.0.16
